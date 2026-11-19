@@ -1,0 +1,393 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#172b3c">
+<title>Last War - Drone Bank</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101b27;color:#edf3f8;font-family:system-ui,sans-serif}
+main{max-width:520px;margin:auto;padding:18px}
+h1{font-size:25px;margin:4px 0}
+h2{font-size:17px;margin:0 0 14px}
+p{color:#aabac8;font-size:13px}
+.card{background:#1b2b3a;border:1px solid #304355;border-radius:16px;padding:17px;margin:14px 0}
+.balance{font-size:36px;font-weight:800;color:#75e0a4;margin:8px 0}
+.small{font-size:12px;color:#aabac8}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.progress{height:12px;background:#344757;border-radius:20px;overflow:hidden;margin:12px 0}
+.bar{height:100%;background:#75e0a4;width:0;transition:width .2s}
+input,select,button{font:inherit;border-radius:10px;padding:12px;width:100%;margin:5px 0}
+input,select{background:#101b27;color:white;border:1px solid #40576b}
+button{border:0;background:#75e0a4;color:#10251b;font-weight:700;cursor:pointer}
+button.secondary{background:#344b60;color:white}
+button.danger{background:#703c42;color:white}
+.tabs{display:flex;gap:8px}
+.tabs button{flex:1;font-size:13px}
+.entry{padding:12px 0;border-bottom:1px solid #344757}
+.plus{color:#75e0a4;font-weight:700}
+.minus{color:#ff9999;font-weight:700}
+label{display:block;font-size:13px;color:#bdcad5;margin-top:10px}
+.hidden{display:none}
+footer{text-align:center;color:#8294a5;font-size:11px;padding:15px}
+</style>
+</head>
+<body>
+<main>
+<header>
+ <div class="small">LAST WAR · PERSONAL TRACKER</div>
+ <h1>🚁 Drone Bank</h1>
+ <p>Your Drone Gear Parts savings account</p>
+</header>
+
+<section class="card">
+ <div class="small">CURRENT BALANCE</div>
+ <div class="balance" id="balance">1,500</div>
+ <div class="row small">
+  <span id="today">Today's activity</span>
+  <span id="net">+0</span>
+ </div>
+</section>
+
+<section class="card">
+ <div class="row">
+  <h2>🎯 Next upgrade</h2>
+  <span class="small" id="percent">30%</span>
+ </div>
+ <div class="balance" style="font-size:25px" id="goal">5,000</div>
+ <div class="progress"><div class="bar" id="bar"></div></div>
+ <div class="row small">
+  <span id="saved">1,500 saved</span>
+  <span id="remaining">3,500 remaining</span>
+ </div>
+ <p id="milestoneStatus"></p>
+</section>
+
+<section class="card">
+ <h2>💰 New transaction</h2>
+ <div class="tabs">
+  <button id="depositTab" onclick="setMode('deposit')">＋ Deposit</button>
+  <button class="secondary" id="withdrawTab" onclick="setMode('withdraw')">− Withdrawal</button>
+ </div>
+ <label>Number of parts</label>
+ <input id="amount" type="number" min="1" step="1" placeholder="Enter amount">
+ <label>Description</label>
+ <input id="description" placeholder="Daily rewards, upgrade, etc.">
+ <button onclick="addTransaction()">Save transaction</button>
+ <p id="error" style="color:#ff9999"></p>
+</section>
+
+<section class="card">
+ <h2>🚀 Complete an upgrade</h2>
+ <p>Record the parts spent and set your next milestone.</p>
+ <label>Parts spent</label>
+ <input id="upgradeCost" type="number" min="1" step="1" placeholder="Upgrade cost">
+ <label>Next upgrade target (optional)</label>
+ <input id="nextGoal" type="number" min="0" step="1" placeholder="New target">
+ <label>Upgrade description</label>
+ <input id="upgradeNote" placeholder="Drone level upgrade">
+ <button onclick="completeUpgrade()">Complete upgrade</button>
+ <p id="upgradeError" style="color:#ff9999"></p>
+</section>
+
+<section class="card">
+ <h2>📊 Savings statistics</h2>
+ <div class="row"><span class="small">Today's deposits</span><b id="dayIn">0</b></div>
+ <div class="row"><span class="small">This week</span><b id="weekIn">0</b></div>
+ <div class="row"><span class="small">This month</span><b id="monthIn">0</b></div>
+ <div class="row"><span class="small">All-time deposits</span><b id="allIn">0</b></div>
+ <div class="row"><span class="small">All-time withdrawals</span><b id="allOut">0</b></div>
+</section>
+
+<section class="card">
+ <div class="row">
+  <h2>📜 Transaction history</h2>
+  <span class="small" id="count">0 entries</span>
+ </div>
+ <div id="history"><p>No transactions yet.</p></div>
+</section>
+
+<section class="card">
+ <h2>⚙️ Account settings</h2>
+ <label>Opening balance</label>
+ <input id="opening" type="number" min="0" step="1">
+ <label>Next upgrade target</label>
+ <input id="target" type="number" min="0" step="1">
+ <button onclick="saveSettings()">Save settings</button>
+ <hr style="border-color:#344757;margin:18px 0">
+ <h2>💾 Backup & restore</h2>
+ <button onclick="backup()">Download backup</button>
+ <label>Restore a backup file</label>
+ <input type="file" id="restoreFile" accept=".json,application/json">
+ <button class="secondary" onclick="restore()">Restore backup</button>
+ <p>Keep a backup somewhere safe. Restoring replaces the current account data.</p>
+</section>
+
+<footer>
+All daily statistics use GMT / UTC.<br>
+Your account is stored locally in this browser.
+</footer>
+</main>
+
+<script>
+const KEY = "lastWarDroneBank_v1";
+let mode = "deposit";
+
+function initialData(){
+ return {
+  opening:1616,
+  target:5000,
+  transactions:[]
+ };
+}
+
+function load(){
+ try{
+  const raw=localStorage.getItem(KEY);
+  if(!raw)return initialData();
+  const d=JSON.parse(raw);
+  if(!Number.isFinite(d.opening)||!Number.isFinite(d.target)||
+     !Array.isArray(d.transactions))return initialData();
+  return d;
+ }catch(e){return initialData();}
+}
+
+let data=load();
+
+function persist(){
+ localStorage.setItem(KEY,JSON.stringify(data));
+ render();
+}
+
+function fmt(n){
+ return Math.round(n).toLocaleString("en-US");
+}
+
+function utcDate(date=new Date()){
+ return date.toISOString().slice(0,10);
+}
+
+function balance(){
+ return data.opening+data.transactions.reduce((s,t)=>
+  s+(t.type==="deposit"?t.amount:-t.amount),0);
+}
+
+function setMode(m){
+ mode=m;
+ document.getElementById("depositTab").className=
+  m==="deposit"?"":"secondary";
+ document.getElementById("withdrawTab").className=
+  m==="withdraw"?"":"secondary";
+}
+
+function addTransaction(){
+ const amount=Number(document.getElementById("amount").value);
+ const description=document.getElementById("description").value.trim();
+ const error=document.getElementById("error");
+ error.textContent="";
+
+ if(!Number.isSafeInteger(amount)||amount<=0){
+  error.textContent="Enter a positive whole number.";
+  return;
+ }
+ if(mode==="withdraw"&&amount>balance()){
+  error.textContent="Not enough parts in your account.";
+  return;
+ }
+
+ data.transactions.unshift({
+  id:crypto.randomUUID(),
+  date:utcDate(),
+  type:mode,
+  amount,
+  note:description||(mode==="deposit"?"Daily collection":"Withdrawal"),
+  time:new Date().toISOString()
+ });
+
+ document.getElementById("amount").value="";
+ document.getElementById("description").value="";
+ persist();
+}
+
+function completeUpgrade(){
+ const cost=Number(document.getElementById("upgradeCost").value);
+ const next=document.getElementById("nextGoal").value;
+ const note=document.getElementById("upgradeNote").value.trim();
+ const error=document.getElementById("upgradeError");
+ error.textContent="";
+
+ if(!Number.isSafeInteger(cost)||cost<=0){
+  error.textContent="Enter a valid upgrade cost.";
+  return;
+ }
+ if(cost>balance()){
+  error.textContent="Your balance is too low.";
+  return;
+ }
+ if(next!==""&&(!Number.isSafeInteger(Number(next))||Number(next)<0)){
+  error.textContent="Enter a valid next target.";
+  return;
+ }
+
+ data.transactions.unshift({
+  id:crypto.randomUUID(),
+  date:utcDate(),
+  type:"withdraw",
+  amount:cost,
+  note:note||"Drone upgrade",
+  time:new Date().toISOString()
+ });
+
+ if(next!=="")data.target=Number(next);
+
+ document.getElementById("upgradeCost").value="";
+ document.getElementById("nextGoal").value="";
+ document.getElementById("upgradeNote").value="";
+ persist();
+}
+
+function saveSettings(){
+ const opening=Number(document.getElementById("opening").value);
+ const target=Number(document.getElementById("target").value);
+ if(!Number.isSafeInteger(opening)||opening<0||
+    !Number.isSafeInteger(target)||target<0){
+  alert("Please enter valid whole numbers.");
+  return;
+ }
+ if(opening+data.transactions.reduce((s,t)=>
+   s+(t.type==="deposit"?t.amount:-t.amount),0)<0){
+  alert("These settings would create a negative balance.");
+  return;
+ }
+ data.opening=opening;
+ data.target=target;
+ persist();
+ alert("Settings saved.");
+}
+
+function startOfWeek(date){
+ const d=new Date(date+"T00:00:00Z");
+ const day=(d.getUTCDay()+6)%7;
+ d.setUTCDate(d.getUTCDate()-day);
+ return utcDate(d);
+}
+
+function sumSince(date){
+ return data.transactions.filter(t=>
+  t.type==="deposit"&&t.date>=date
+ ).reduce((s,t)=>s+t.amount,0);
+}
+
+function render(){
+ const b=balance();
+ const goal=data.target;
+ const pct=goal>0?Math.min(100,b/goal*100):0;
+ const today=utcDate();
+ const week=startOfWeek(today);
+ const month=today.slice(0,7);
+
+ document.getElementById("balance").textContent=fmt(b)+" parts";
+ document.getElementById("goal").textContent=fmt(goal)+" parts";
+ document.getElementById("percent").textContent=pct.toFixed(1)+"%";
+ document.getElementById("bar").style.width=pct+"%";
+ document.getElementById("saved").textContent=fmt(b)+" saved";
+ document.getElementById("remaining").textContent=
+  fmt(Math.max(0,goal-b))+" remaining";
+ document.getElementById("milestoneStatus").textContent=
+  goal>0&&b>=goal?"🎉 Milestone reached!": "Keep saving for your next upgrade.";
+
+ const todayTx=data.transactions.filter(t=>t.date===today);
+ const net=todayTx.reduce((s,t)=>
+  s+(t.type==="deposit"?t.amount:-t.amount),0);
+ document.getElementById("net").textContent=(net>=0?"+":"")+fmt(net);
+ document.getElementById("net").style.color=net>=0?"#75e0a4":"#ff9999";
+
+ const deposits=(from)=>sumSince(from);
+ document.getElementById("dayIn").textContent=fmt(deposits(today));
+ document.getElementById("weekIn").textContent=fmt(deposits(week));
+ document.getElementById("monthIn").textContent=fmt(deposits(month));
+ document.getElementById("allIn").textContent=fmt(
+  data.transactions.filter(t=>t.type==="deposit")
+   .reduce((s,t)=>s+t.amount,0));
+ document.getElementById("allOut").textContent=fmt(
+  data.transactions.filter(t=>t.type==="withdraw")
+   .reduce((s,t)=>s+t.amount,0));
+
+ document.getElementById("opening").value=data.opening;
+ document.getElementById("target").value=data.target;
+ document.getElementById("count").textContent=
+  data.transactions.length+" entries";
+
+ const history=document.getElementById("history");
+ history.innerHTML="";
+ if(!data.transactions.length){
+  history.textContent="No transactions yet.";
+ }else{
+  data.transactions.forEach(t=>{
+   const row=document.createElement("div");
+   row.className="entry";
+   const top=document.createElement("div");
+   top.className="row";
+   const name=document.createElement("b");
+   name.textContent=t.note;
+   const value=document.createElement("span");
+   value.className=t.type==="deposit"?"plus":"minus";
+   value.textContent=(t.type==="deposit"?"+":"−")+fmt(t.amount);
+   top.append(name,value);
+   const date=document.createElement("div");
+   date.className="small";
+   date.textContent=t.date+" GMT";
+   row.append(top,date);
+   history.append(row);
+  });
+ }
+}
+
+function backup(){
+ const blob=new Blob([JSON.stringify(data,null,2)],
+  {type:"application/json"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="drone-bank-backup.json";
+ a.click();
+ URL.revokeObjectURL(url);
+}
+
+function restore(){
+ const file=document.getElementById("restoreFile").files[0];
+ if(!file){alert("Choose a backup file first.");return;}
+ const reader=new FileReader();
+ reader.onload=()=>{
+  try{
+   const d=JSON.parse(reader.result);
+   if(!Number.isSafeInteger(d.opening)||d.opening<0||
+      !Number.isSafeInteger(d.target)||d.target<0||
+      !Array.isArray(d.transactions)||
+      !d.transactions.every(t=>
+       typeof t.id==="string"&&
+       ["deposit","withdraw"].includes(t.type)&&
+       Number.isSafeInteger(t.amount)&&t.amount>0&&
+       /^\d{4}-\d{2}-\d{2}$/.test(t.date)&&
+       typeof t.note==="string")){
+    throw new Error("Invalid backup");
+   }
+   const total=d.opening+d.transactions.reduce((s,t)=>
+    s+(t.type==="deposit"?t.amount:-t.amount),0);
+   if(total<0)throw new Error("Negative balance");
+   if(!confirm("Replace your current Drone Bank with this backup?"))return;
+   data=d;
+   persist();
+   alert("Backup restored!");
+  }catch(e){alert("This backup file is invalid.");}
+ };
+ reader.readAsText(file);
+}
+
+setMode("deposit");
+render();
+</script>
+</body>
+</html>
