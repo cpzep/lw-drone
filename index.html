@@ -821,6 +821,111 @@ function renderSources(){
  });
  if(data.sources.includes(previous))select.value=previous;
 }
+
+function renderHistory(){
+ const area=document.getElementById("history");
+ area.innerHTML="";
+ document.getElementById("count").textContent=data.transactions.length+" entries";
+ if(!data.transactions.length){
+  area.textContent="No transactions yet.";
+  return;
+ }
+ data.transactions.forEach(t=>{
+  const row=document.createElement("div");
+  row.className="entry";
+  const title=document.createElement("b");
+  title.textContent=t.note;
+  const amount=document.createElement("b");
+  amount.className=t.type==="deposit"?"plus":"minus";
+  amount.textContent=(t.type==="deposit"?"+":"-")+fmt(t.amount);
+  const info=document.createElement("div");
+  info.className="small";
+  info.textContent=t.date+" GMT · "+(t.source||"");
+  const edit=document.createElement("button");
+  edit.className="secondary smallbtn";
+  edit.textContent="Edit";
+  edit.onclick=()=>editTransaction(t.id);
+  const del=document.createElement("button");
+  del.className="danger smallbtn";
+  del.textContent="Delete";
+  del.onclick=()=>deleteTransaction(t.id);
+  row.append(title,amount,info,edit,del);
+  area.append(row);
+ });
+}
+
+function renderUpgrades(){
+ const area=document.getElementById("upgradeHistory");
+ area.innerHTML="";
+ const upgrades=data.transactions.filter(t=>
+  t.type==="withdraw"&&t.note.startsWith("Upgrade:")
+ );
+ if(!upgrades.length){
+  area.textContent="No upgrades recorded yet.";
+  return;
+ }
+ upgrades.forEach(t=>{
+  const row=document.createElement("div");
+  row.className="entry";
+  row.textContent=t.date+" · "+t.note+" · -"+fmt(t.amount);
+  area.append(row);
+ });
+}
+
+function render(){
+ const b=balance();
+ const goal=data.target;
+ const pct=goal>0?Math.min(100,b/goal*100):0;
+ document.getElementById("balance").textContent=fmt(b)+" parts";
+ document.getElementById("goal").textContent=fmt(goal)+" parts";
+ document.getElementById("percent").textContent=pct.toFixed(1)+"%";
+ document.getElementById("bar").style.width=pct+"%";
+ document.getElementById("saved").textContent=fmt(b)+" saved";
+ document.getElementById("remaining").textContent=fmt(Math.max(0,goal-b))+" remaining";
+ document.getElementById("milestoneMessage").textContent=b>=goal?"Milestone reached!":"Keep saving!";
+ const today=utcDate();
+ const daily=data.transactions.filter(t=>t.date===today);
+ const net=daily.reduce((s,t)=>s+(t.type==="deposit"?t.amount:-t.amount),0);
+ document.getElementById("todayNet").textContent=(net>=0?"+":"")+fmt(net);
+ document.getElementById("opening").value=data.opening;
+ renderAnalytics();
+ renderSources();
+ renderHistory();
+ renderUpgrades();
+}
+
+function backup(){
+ const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="drone-bank-backup.json";
+ a.click();
+ URL.revokeObjectURL(url);
+}
+
+function restore(){
+ const file=document.getElementById("restoreFile").files[0];
+ if(!file){alert("Choose a backup file.");return;}
+ const reader=new FileReader();
+ reader.onload=()=>{
+  try{
+   const d=JSON.parse(reader.result);
+   if(!Number.isSafeInteger(d.opening)||!Number.isSafeInteger(d.target)||
+      !Array.isArray(d.transactions)||!Array.isArray(d.sources)){
+    throw new Error("Invalid backup");
+   }
+   if(!confirm("Replace current account data?"))return;
+   data=d;
+   persist();
+   alert("Backup restored!");
+  }catch(e){alert("Invalid backup file.");}
+ };
+ reader.readAsText(file);
+}
+
+setMode("deposit");
+render();
 </script>
 </body>
 </html>
