@@ -5,32 +5,40 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#172b3c">
-<title>Last War - Drone Bank</title>
+<title>Drone Bank 2.0</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;background:#101b27;color:#edf3f8;font-family:system-ui,sans-serif}
-main{max-width:520px;margin:auto;padding:18px}
-h1{font-size:25px;margin:4px 0}
-h2{font-size:17px;margin:0 0 14px}
-p{color:#aabac8;font-size:13px}
-.card{background:#1b2b3a;border:1px solid #304355;border-radius:16px;padding:17px;margin:14px 0}
-.balance{font-size:36px;font-weight:800;color:#75e0a4;margin:8px 0}
+main{max-width:560px;margin:auto;padding:16px}
+h1{font-size:26px;margin:3px 0}
+h2{font-size:17px;margin:0 0 13px}
+p{color:#aabac8;font-size:13px;line-height:1.5}
+.card{background:#1b2b3a;border:1px solid #304355;border-radius:16px;padding:16px;margin:13px 0}
 .small{font-size:12px;color:#aabac8}
+.balance{font-size:35px;font-weight:800;color:#75e0a4;margin:8px 0}
 .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
-.progress{height:12px;background:#344757;border-radius:20px;overflow:hidden;margin:12px 0}
-.bar{height:100%;background:#75e0a4;width:0;transition:width .2s}
-input,select,button{font:inherit;border-radius:10px;padding:12px;width:100%;margin:5px 0}
+input,select,button{font:inherit;border-radius:10px;padding:11px;width:100%;margin:5px 0}
 input,select{background:#101b27;color:white;border:1px solid #40576b}
 button{border:0;background:#75e0a4;color:#10251b;font-weight:700;cursor:pointer}
 button.secondary{background:#344b60;color:white}
 button.danger{background:#703c42;color:white}
-.tabs{display:flex;gap:8px}
+button.smallbtn{width:auto;padding:7px 10px;font-size:12px}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
 .tabs button{flex:1;font-size:13px}
+label{display:block;font-size:13px;color:#bdcad5;margin-top:9px}
+.progress{height:12px;background:#344757;border-radius:20px;overflow:hidden;margin:12px 0}
+.bar{height:100%;background:#75e0a4}
+.stat{background:#263b4c;border-radius:11px;padding:11px}
+.stat strong{font-size:19px;display:block}
+.stat span{font-size:11px;color:#aabac8}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .entry{padding:12px 0;border-bottom:1px solid #344757}
 .plus{color:#75e0a4;font-weight:700}
 .minus{color:#ff9999;font-weight:700}
-label{display:block;font-size:13px;color:#bdcad5;margin-top:10px}
-.hidden{display:none}
+.sourcebar{height:9px;background:#344757;border-radius:10px;overflow:hidden}
+.sourcefill{height:100%;background:#75e0a4}
+.hidden{display:none!important}
+hr{border:0;border-top:1px solid #344757;margin:15px 0}
 footer{text-align:center;color:#8294a5;font-size:11px;padding:15px}
 </style>
 </head>
@@ -38,50 +46,93 @@ footer{text-align:center;color:#8294a5;font-size:11px;padding:15px}
 <main>
 <header>
  <div class="small">LAST WAR · PERSONAL TRACKER</div>
- <h1>🚁 Drone Bank</h1>
+ <h1>🚁 Drone Bank 2.0</h1>
  <p>Your Drone Gear Parts savings account</p>
 </header>
 
 <section class="card">
  <div class="small">CURRENT BALANCE</div>
- <div class="balance" id="balance">1,500</div>
+ <div class="balance" id="balance">Loading...</div>
  <div class="row small">
-  <span id="today">Today's activity</span>
-  <span id="net">+0</span>
+  <span>Today's net change (GMT)</span>
+  <b id="todayNet">0</b>
  </div>
 </section>
 
 <section class="card">
  <div class="row">
-  <h2>🎯 Next upgrade</h2>
-  <span class="small" id="percent">30%</span>
+  <h2>🎯 Next upgrade milestone</h2>
+  <span class="small" id="percent">0%</span>
  </div>
- <div class="balance" style="font-size:25px" id="goal">5,000</div>
+ <div class="balance" style="font-size:26px" id="goal">0</div>
  <div class="progress"><div class="bar" id="bar"></div></div>
  <div class="row small">
-  <span id="saved">1,500 saved</span>
-  <span id="remaining">3,500 remaining</span>
+  <span id="saved">0 saved</span>
+  <span id="remaining">0 remaining</span>
  </div>
- <p id="milestoneStatus"></p>
+ <p id="milestoneMessage"></p>
+ <label>Change next milestone</label>
+ <div class="row">
+  <input id="targetInput" type="number" min="0" step="1" placeholder="New target">
+  <button class="smallbtn" onclick="saveTarget()">Save</button>
+ </div>
 </section>
 
 <section class="card">
- <h2>💰 New transaction</h2>
+ <h2>💰 Record a transaction</h2>
  <div class="tabs">
   <button id="depositTab" onclick="setMode('deposit')">＋ Deposit</button>
   <button class="secondary" id="withdrawTab" onclick="setMode('withdraw')">− Withdrawal</button>
  </div>
  <label>Number of parts</label>
  <input id="amount" type="number" min="1" step="1" placeholder="Enter amount">
- <label>Description</label>
+ <div id="sourceField">
+  <label>Deposit source</label>
+  <select id="sourceSelect"></select>
+ </div>
+ <label>Description (optional)</label>
  <input id="description" placeholder="Daily rewards, upgrade, etc.">
  <button onclick="addTransaction()">Save transaction</button>
- <p id="error" style="color:#ff9999"></p>
+ <p id="transactionError" style="color:#ff9999"></p>
+</section>
+
+<section class="card">
+ <h2>📊 Earnings overview</h2>
+ <div class="tabs">
+  <button id="dayTab" onclick="setPeriod('day')">Daily</button>
+  <button class="secondary" id="weekTab" onclick="setPeriod('week')">Weekly</button>
+  <button class="secondary" id="monthTab" onclick="setPeriod('month')">Monthly</button>
+ </div>
+ <div class="grid">
+  <div class="stat"><span>Total deposits</span><strong class="plus" id="periodIn">0</strong></div>
+  <div class="stat"><span>Withdrawals</span><strong id="periodOut">0</strong></div>
+  <div class="stat"><span>Net change</span><strong id="periodNet">0</strong></div>
+  <div class="stat"><span>Average daily deposits</span><strong id="average">0</strong></div>
+ </div>
+ <hr>
+ <div class="row">
+  <span class="small">Best earning day</span>
+  <b id="bestDay">Not available</b>
+ </div>
+ <h3>Daily earnings</h3>
+ <div id="earningsChart"></div>
+ <p id="periodLabel"></p>
+</section>
+
+<section class="card">
+ <h2>📍 Earnings by source</h2>
+ <div id="sourceBreakdown"></div>
+ <hr>
+ <h3>Manage your sources</h3>
+ <div class="row">
+  <input id="newSource" placeholder="Enter a new source">
+  <button class="smallbtn" onclick="addSource()">＋ Add</button>
+ </div>
+ <div id="sourceManagement"></div>
 </section>
 
 <section class="card">
  <h2>🚀 Complete an upgrade</h2>
- <p>Record the parts spent and set your next milestone.</p>
  <label>Parts spent</label>
  <input id="upgradeCost" type="number" min="1" step="1" placeholder="Upgrade cost">
  <label>Next upgrade target (optional)</label>
@@ -90,15 +141,9 @@ footer{text-align:center;color:#8294a5;font-size:11px;padding:15px}
  <input id="upgradeNote" placeholder="Drone level upgrade">
  <button onclick="completeUpgrade()">Complete upgrade</button>
  <p id="upgradeError" style="color:#ff9999"></p>
-</section>
-
-<section class="card">
- <h2>📊 Savings statistics</h2>
- <div class="row"><span class="small">Today's deposits</span><b id="dayIn">0</b></div>
- <div class="row"><span class="small">This week</span><b id="weekIn">0</b></div>
- <div class="row"><span class="small">This month</span><b id="monthIn">0</b></div>
- <div class="row"><span class="small">All-time deposits</span><b id="allIn">0</b></div>
- <div class="row"><span class="small">All-time withdrawals</span><b id="allOut">0</b></div>
+ <hr>
+ <h3>Upgrade history</h3>
+ <div id="upgradeHistory"></div>
 </section>
 
 <section class="card">
@@ -106,40 +151,40 @@ footer{text-align:center;color:#8294a5;font-size:11px;padding:15px}
   <h2>📜 Transaction history</h2>
   <span class="small" id="count">0 entries</span>
  </div>
- <div id="history"><p>No transactions yet.</p></div>
+ <div id="history"></div>
 </section>
 
 <section class="card">
  <h2>⚙️ Account settings</h2>
  <label>Opening balance</label>
  <input id="opening" type="number" min="0" step="1">
- <label>Next upgrade target</label>
- <input id="target" type="number" min="0" step="1">
- <button onclick="saveSettings()">Save settings</button>
- <hr style="border-color:#344757;margin:18px 0">
+ <button class="secondary" onclick="saveOpening()">Save opening balance</button>
+ <hr>
  <h2>💾 Backup & restore</h2>
  <button onclick="backup()">Download backup</button>
  <label>Restore a backup file</label>
  <input type="file" id="restoreFile" accept=".json,application/json">
  <button class="secondary" onclick="restore()">Restore backup</button>
- <p>Keep a backup somewhere safe. Restoring replaces the current account data.</p>
+ <p>Keep backups somewhere safe. Restoring replaces your current account data.</p>
 </section>
 
 <footer>
-All daily statistics use GMT / UTC.<br>
-Your account is stored locally in this browser.
+Drone Bank 2.0 · All dates use GMT / UTC<br>
+Stored locally in this browser
 </footer>
 </main>
-
+ 
 <script>
 const KEY = "lastWarDroneBank_v1";
 let mode = "deposit";
+let period = "day";
 
 function initialData(){
  return {
   opening:1616,
   target:5000,
-  transactions:[]
+  transactions:[],
+  sources:["Source Gear Factory","Daily missions","Alliance rewards","Events","Other"]
  };
 }
 
@@ -148,8 +193,17 @@ function load(){
   const raw=localStorage.getItem(KEY);
   if(!raw)return initialData();
   const d=JSON.parse(raw);
-  if(!Number.isFinite(d.opening)||!Number.isFinite(d.target)||
+  if(!Number.isSafeInteger(d.opening)||
+     !Number.isSafeInteger(d.target)||
      !Array.isArray(d.transactions))return initialData();
+  if(!Array.isArray(d.sources)){
+   d.sources=["Source Gear Factory","Daily missions","Alliance rewards","Events","Other"];
+  }
+  d.transactions.forEach(t=>{
+   if(!t.id)t.id=crypto.randomUUID();
+   if(!t.note)t.note=t.type==="deposit"?"Deposit":"Withdrawal";
+   if(!t.source)t.source="";
+  });
   return d;
  }catch(e){return initialData();}
 }
@@ -165,8 +219,8 @@ function fmt(n){
  return Math.round(n).toLocaleString("en-US");
 }
 
-function utcDate(date=new Date()){
- return date.toISOString().slice(0,10);
+function utcDate(d=new Date()){
+ return d.toISOString().slice(0,10);
 }
 
 function balance(){
@@ -174,20 +228,25 @@ function balance(){
   s+(t.type==="deposit"?t.amount:-t.amount),0);
 }
 
+function deposits(ts){
+ return ts.filter(t=>t.type==="deposit").reduce((s,t)=>s+t.amount,0);
+}
+
+function withdrawals(ts){
+ return ts.filter(t=>t.type==="withdraw").reduce((s,t)=>s+t.amount,0);
+}
+
 function setMode(m){
  mode=m;
- document.getElementById("depositTab").className=
-  m==="deposit"?"":"secondary";
- document.getElementById("withdrawTab").className=
-  m==="withdraw"?"":"secondary";
+ document.getElementById("depositTab").className=m==="deposit"?"":"secondary";
+ document.getElementById("withdrawTab").className=m==="withdraw"?"":"secondary";
+ document.getElementById("sourceField").classList.toggle("hidden",m!=="deposit");
 }
 
 function addTransaction(){
  const amount=Number(document.getElementById("amount").value);
- const description=document.getElementById("description").value.trim();
- const error=document.getElementById("error");
+ const error=document.getElementById("transactionError");
  error.textContent="";
-
  if(!Number.isSafeInteger(amount)||amount<=0){
   error.textContent="Enter a positive whole number.";
   return;
@@ -196,18 +255,85 @@ function addTransaction(){
   error.textContent="Not enough parts in your account.";
   return;
  }
-
+ const source=mode==="deposit"?
+  document.getElementById("sourceSelect").value:"";
+ if(mode==="deposit"&&!source){
+  error.textContent="Please choose a deposit source.";
+  return;
+ }
+ const note=document.getElementById("description").value.trim();
  data.transactions.unshift({
   id:crypto.randomUUID(),
   date:utcDate(),
   type:mode,
   amount,
-  note:description||(mode==="deposit"?"Daily collection":"Withdrawal"),
+  source,
+  note:note||(mode==="deposit"?"Deposit":"Withdrawal"),
   time:new Date().toISOString()
  });
-
  document.getElementById("amount").value="";
  document.getElementById("description").value="";
+ persist();
+}
+
+function saveTarget(){
+ const n=Number(document.getElementById("targetInput").value);
+ if(!Number.isSafeInteger(n)||n<0){
+  alert("Enter a valid target.");
+  return;
+ }
+ data.target=n;
+ document.getElementById("targetInput").value="";
+ persist();
+}
+
+function saveOpening(){
+ const n=Number(document.getElementById("opening").value);
+ if(!Number.isSafeInteger(n)||n<0){
+  alert("Enter a valid opening balance.");
+  return;
+ }
+ const total=n+data.transactions.reduce((s,t)=>
+  s+(t.type==="deposit"?t.amount:-t.amount),0);
+ if(total<0){
+  alert("This would create a negative balance.");
+  return;
+ }
+ data.opening=n;
+ persist();
+ alert("Opening balance saved.");
+}
+
+function addSource(){
+ const input=document.getElementById("newSource");
+ const name=input.value.trim();
+ if(!name){alert("Enter a source name.");return;}
+ if(data.sources.some(s=>s.toLowerCase()===name.toLowerCase())){
+  alert("That source already exists.");return;
+ }
+ data.sources.push(name);
+ input.value="";
+ persist();
+}
+
+function renameSource(oldName){
+ const name=prompt("New name for "+oldName,oldName);
+ if(name===null)return;
+ const clean=name.trim();
+ if(!clean){alert("Source name cannot be empty.");return;}
+ if(data.sources.some(s=>s.toLowerCase()===clean.toLowerCase()&&s!==oldName)){
+  alert("That source already exists.");return;
+ }
+ data.sources=data.sources.map(s=>s===oldName?clean:s);
+ data.transactions.forEach(t=>{
+  if(t.source===oldName)t.source=clean;
+ });
+ persist();
+}
+
+function archiveSource(name){
+ if(!confirm("Archive "+name+"? Old transactions will be kept."))return;
+ data.sources=data.sources.filter(s=>s!==name);
  persist();
 }
 
@@ -217,177 +343,484 @@ function completeUpgrade(){
  const note=document.getElementById("upgradeNote").value.trim();
  const error=document.getElementById("upgradeError");
  error.textContent="";
-
  if(!Number.isSafeInteger(cost)||cost<=0){
-  error.textContent="Enter a valid upgrade cost.";
-  return;
+  error.textContent="Enter a valid upgrade cost.";return;
  }
  if(cost>balance()){
-  error.textContent="Your balance is too low.";
-  return;
+  error.textContent="Your balance is too low.";return;
  }
  if(next!==""&&(!Number.isSafeInteger(Number(next))||Number(next)<0)){
-  error.textContent="Enter a valid next target.";
-  return;
+  error.textContent="Enter a valid next target.";return;
  }
-
+ if(!confirm("Record a withdrawal of "+fmt(cost)+" parts for this upgrade?"))return;
  data.transactions.unshift({
   id:crypto.randomUUID(),
   date:utcDate(),
   type:"withdraw",
   amount:cost,
-  note:note||"Drone upgrade",
+  source:"",
+  note:"Upgrade: "+(note||"Drone upgrade"),
   time:new Date().toISOString()
  });
-
  if(next!=="")data.target=Number(next);
-
  document.getElementById("upgradeCost").value="";
  document.getElementById("nextGoal").value="";
  document.getElementById("upgradeNote").value="";
  persist();
 }
 
-function saveSettings(){
- const opening=Number(document.getElementById("opening").value);
- const target=Number(document.getElementById("target").value);
- if(!Number.isSafeInteger(opening)||opening<0||
-    !Number.isSafeInteger(target)||target<0){
-  alert("Please enter valid whole numbers.");
-  return;
+function editTransaction(id){
+ const t=data.transactions.find(x=>x.id===id);
+ if(!t)return;
+ const amount=prompt("New amount:",String(t.amount));
+ if(amount===null)return;
+ const n=Number(amount);
+ if(!Number.isSafeInteger(n)||n<=0){
+  alert("Enter a positive whole number.");return;
  }
- if(opening+data.transactions.reduce((s,t)=>
-   s+(t.type==="deposit"?t.amount:-t.amount),0)<0){
-  alert("These settings would create a negative balance.");
-  return;
+ const oldAmount=t.amount;
+ t.amount=n;
+ if(balance()<0){
+  t.amount=oldAmount;
+  alert("This change would make your balance negative.");return;
  }
- data.opening=opening;
- data.target=target;
+ const note=prompt("Description:",t.note);
+ if(note===null){t.amount=oldAmount;return;}
+ t.note=note.trim()||t.note;
+ if(t.type==="deposit"){
+  const source=prompt("Deposit source:",t.source||"");
+  if(source===null){t.amount=oldAmount;return;}
+  t.source=source.trim();
+  if(t.source&&!data.sources.includes(t.source))data.sources.push(t.source);
+ }
  persist();
- alert("Settings saved.");
 }
 
-function startOfWeek(date){
- const d=new Date(date+"T00:00:00Z");
- const day=(d.getUTCDay()+6)%7;
- d.setUTCDate(d.getUTCDate()-day);
- return utcDate(d);
+function deleteTransaction(id){
+ if(!confirm("Delete this transaction? The balance will be recalculated."))return;
+ data.transactions=data.transactions.filter(t=>t.id!==id);
+ persist();
 }
 
-function sumSince(date){
- return data.transactions.filter(t=>
-  t.type==="deposit"&&t.date>=date
- ).reduce((s,t)=>s+t.amount,0);
-}
-
-function render(){
- const b=balance();
- const goal=data.target;
- const pct=goal>0?Math.min(100,b/goal*100):0;
+function periodDates(){
  const today=utcDate();
- const week=startOfWeek(today);
- const month=today.slice(0,7);
-
- document.getElementById("balance").textContent=fmt(b)+" parts";
- document.getElementById("goal").textContent=fmt(goal)+" parts";
- document.getElementById("percent").textContent=pct.toFixed(1)+"%";
- document.getElementById("bar").style.width=pct+"%";
- document.getElementById("saved").textContent=fmt(b)+" saved";
- document.getElementById("remaining").textContent=
-  fmt(Math.max(0,goal-b))+" remaining";
- document.getElementById("milestoneStatus").textContent=
-  goal>0&&b>=goal?"🎉 Milestone reached!": "Keep saving for your next upgrade.";
-
- const todayTx=data.transactions.filter(t=>t.date===today);
- const net=todayTx.reduce((s,t)=>
-  s+(t.type==="deposit"?t.amount:-t.amount),0);
- document.getElementById("net").textContent=(net>=0?"+":"")+fmt(net);
- document.getElementById("net").style.color=net>=0?"#75e0a4":"#ff9999";
-
- const deposits=(from)=>sumSince(from);
- document.getElementById("dayIn").textContent=fmt(deposits(today));
- document.getElementById("weekIn").textContent=fmt(deposits(week));
- document.getElementById("monthIn").textContent=fmt(deposits(month));
- document.getElementById("allIn").textContent=fmt(
-  data.transactions.filter(t=>t.type==="deposit")
-   .reduce((s,t)=>s+t.amount,0));
- document.getElementById("allOut").textContent=fmt(
-  data.transactions.filter(t=>t.type==="withdraw")
-   .reduce((s,t)=>s+t.amount,0));
-
- document.getElementById("opening").value=data.opening;
- document.getElementById("target").value=data.target;
- document.getElementById("count").textContent=
-  data.transactions.length+" entries";
-
- const history=document.getElementById("history");
- history.innerHTML="";
- if(!data.transactions.length){
-  history.textContent="No transactions yet.";
- }else{
-  data.transactions.forEach(t=>{
-   const row=document.createElement("div");
-   row.className="entry";
-   const top=document.createElement("div");
-   top.className="row";
-   const name=document.createElement("b");
-   name.textContent=t.note;
-   const value=document.createElement("span");
-   value.className=t.type==="deposit"?"plus":"minus";
-   value.textContent=(t.type==="deposit"?"+":"−")+fmt(t.amount);
-   top.append(name,value);
-   const date=document.createElement("div");
-   date.className="small";
-   date.textContent=t.date+" GMT";
-   row.append(top,date);
-   history.append(row);
-  });
- }
-}
-
-function backup(){
- const blob=new Blob([JSON.stringify(data,null,2)],
-  {type:"application/json"});
- const url=URL.createObjectURL(blob);
- const a=document.createElement("a");
- a.href=url;
- a.download="drone-bank-backup.json";
- a.click();
- URL.revokeObjectURL(url);
-}
-
-function restore(){
- const file=document.getElementById("restoreFile").files[0];
- if(!file){alert("Choose a backup file first.");return;}
- const reader=new FileReader();
- reader.onload=()=>{
-  try{
-   const d=JSON.parse(reader.result);
-   if(!Number.isSafeInteger(d.opening)||d.opening<0||
-      !Number.isSafeInteger(d.target)||d.target<0||
-      !Array.isArray(d.transactions)||
-      !d.transactions.every(t=>
-       typeof t.id==="string"&&
-       ["deposit","withdraw"].includes(t.type)&&
-       Number.isSafeInteger(t.amount)&&t.amount>0&&
-       /^\d{4}-\d{2}-\d{2}$/.test(t.date)&&
-       typeof t.note==="string")){
-    throw new Error("Invalid backup");
-   }
-   const total=d.opening+d.transactions.reduce((s,t)=>
-    s+(t.type==="deposit"?t.amount:-t.amount),0);
-   if(total<0)throw new Error("Negative balance");
-   if(!confirm("Replace your current Drone Bank with this backup?"))return;
-   data=d;
-   persist();
-   alert("Backup restored!");
-  }catch(e){alert("This backup file is invalid.");}
+ if(period==="day")return {
+  start:today,end:today,label:"Today (GMT)"
  };
- reader.readAsText(file);
+ if(period==="week"){
+  const d=new Date(today+"T00:00:00Z");
+  d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));
+  const start=utcDate(d);
+  d.setUTCDate(d.getUTCDate()+6);
+  return {start,end:utcDate(d),label:"This week (Monday–Sunday, GMT)"};
+ }
+ return {
+  start:today.slice(0,7)+"-01",
+  end:today,
+  label:"This month (GMT)"
+ };
 }
 
-setMode("deposit");
-render();
+function renderAnalytics(){
+ const range=periodDates();
+ const tx=data.transactions.filter(t=>
+  t.date>=range.start&&t.date<=range.end
+ );
+ const ins=deposits(tx);
+ const outs=withdrawals(tx);
+ const net=ins-outs;
+ const days=period==="day"?1:period==="week"?7:
+  new Date(Date.UTC(
+   Number(range.start.slice(0,4)),
+   Number(range.start.slice(5,7)),0
+  )).getUTCDate();
+
+ document.getElementById("periodIn").textContent=fmt(ins);
+ document.getElementById("periodOut").textContent=fmt(outs);
+ document.getElementById("periodNet").textContent=(net>=0?"+":"")+fmt(net);
+ document.getElementById("periodNet").style.color=
+  net>=0?"#75e0a4":"#ff9999";
+ document.getElementById("average").textContent=fmt(ins/days);
+ document.getElementById("periodLabel").textContent=range.label;
+
+ const byDay={};
+ tx.filter(t=>t.type==="deposit").forEach(t=>{
+  byDay[t.date]=(byDay[t.date]||0)+t.amount;
+ });
+ const best=Object.entries(byDay).sort((a,b)=>b[1]-a[1])[0];
+ document.getElementById("bestDay").textContent=
+  best?best[0]+" · "+fmt(best[1]):"No deposits yet";
+
+ const dates=[];
+ if(period==="day"){
+  dates.push(utcDate());
+ }else{
+  const d=new Date(range.start+"T00:00:00Z");
+  while(utcDate(d)<=range.end){
+   dates.push(utcDate(d));
+   d.setUTCDate(d.getUTCDate()+1);
+  }
+ }
+ const chart=document.getElementById("earningsChart");
+ chart.innerHTML="";
+ const values=dates.map(d=>byDay[d]||0);
+ const max=Math.max(1,...values);
+ dates.forEach((date,i)=>{
+  if(period==="month"&&values[i]===0&&i%3!==0)return;
+  const wrap=document.createElement("div");
+  wrap.style.cssText="display:flex;align-items:center;gap:8px;margin:7px 0";
+  const label=document.createElement("span");
+  label.className="small";
+  label.style.width="65px";
+  label.textContent=date.slice(5);
+  const track=document.createElement("div");
+  track.className="sourcebar";
+  track.style.flex="1";
+  const fill=document.createElement("div");
+  fill.className="sourcefill";
+  fill.style.width=(values[i]/max*100)+"%";
+  track.append(fill);
+  const value=document.createElement("span");
+  value.className="small";
+  value.style.width="65px";
+  value.style.textAlign="right";
+  value.textContent=fmt(values[i]);
+  wrap.append(label,track,value);
+  chart.append(wrap);
+ });
+ if(!tx.length)chart.innerHTML="<p>No transactions in this period yet.</p>";
+}
+
+function renderSources(){
+ const tx=data.transactions.filter(t=>t.type==="deposit");
+ const total=deposits(tx);
+ const grouped={};
+ tx.forEach(t=>{
+  const name=t.source||"Unassigned";
+  grouped[name]=(grouped[name]||0)+t.amount;
+ });
+ const breakdown=document.getElementById("sourceBreakdown");
+ breakdown.innerHTML="";
+ const entries=Object.entries(grouped).sort((a,b)=>b[1]-a[1]);
+ if(!entries.length)breakdown.innerHTML="<p>No deposits recorded yet.</p>";
+ entries.forEach(([name,value])=>{
+  const wrap=document.createElement("div");
+  wrap.style.margin="13px 0";
+  const row=document.createElement("div");
+  row.className="row";
+  const title=document.createElement("span");
+  title.textContent=name;
+  const amount=document.createElement("b");
+  amount.textContent=fmt(value)+" · "+Math.round(value/total*100)+"%";
+  row.append(title,amount);
+  const track=document.createElement("div");
+  track.className="sourcebar";
+  track.style.marginTop="6px";
+  const fill=document.createElement("div");
+  fill.className="sourcefill";
+  fill.style.width=(value/total*100)+"%";
+  track.append(fill);
+  wrap.append(row,track);
+  breakdown.append(wrap);
+ });
+
+ const management=document.getElementById("sourceManagement");
+ management.innerHTML="";
+ if(!data.sources.length)management.innerHTML="<p>No active sources. Add one above.</p>";
+ data.sources.forEach(s=>{
+  const row=document.createElement("div");
+  row.className="row";
+  row.style.margin="7px 0";
+  const name=document.createElement("span");
+  name.textContent=s;
+  const actions=document.createElement("span");
+  const edit=document.createElement("button");
+  edit.className="secondary smallbtn";
+  edit.textContent="Rename";
+  edit.onclick=()=>renameSource(s);
+  const archive=document.createElement("button");
+  archive.className="danger smallbtn";
+  archive.textContent="Archive";
+  archive.onclick=()=>archiveSource(s);
+  actions.append(edit,archive);
+  row.append(name,actions);
+  management.append(row);
+ });
+
+ const select=document.getElementById("sourceSelect");
+ const previous=select.value;
+ select.innerHTML="";
+ const blank=document.createElement("option");
+ blank.value="";
+ blank.textContent="Select a source";
+ select.append(blank);
+ data.sources.forEach(s=>{
+  const option=document.createElement("option");
+  option.value=s;
+  option.textContent=s;
+  select.append(option);
+ });
+ if(data.sources.includes(previous))select.value=previous;
+}
+
+function addSource(){
+ const input=document.getElementById("newSource");
+ const name=input.value.trim();
+ if(!name){alert("Enter a source name.");return;}
+ if(data.sources.some(s=>s.toLowerCase()===name.toLowerCase())){
+  alert("That source already exists.");return;
+ }
+ data.sources.push(name);
+ input.value="";
+ persist();
+}
+
+function renameSource(oldName){
+ const name=prompt("New name for "+oldName,oldName);
+ if(name===null)return;
+ const clean=name.trim();
+ if(!clean){alert("Source name cannot be empty.");return;}
+ if(data.sources.some(s=>s.toLowerCase()===clean.toLowerCase()&&s!==oldName)){
+  alert("That source already exists.");return;
+ }
+ data.sources=data.sources.map(s=>s===oldName?clean:s);
+ data.transactions.forEach(t=>{
+  if(t.source===oldName)t.source=clean;
+ });
+ persist();
+}
+
+function archiveSource(name){
+ if(!confirm("Archive "+name+"? Old transactions will be kept."))return;
+ data.sources=data.sources.filter(s=>s!==name);
+ persist();
+}
+
+function completeUpgrade(){
+ const cost=Number(document.getElementById("upgradeCost").value);
+ const next=document.getElementById("nextGoal").value;
+ const note=document.getElementById("upgradeNote").value.trim();
+ const error=document.getElementById("upgradeError");
+ error.textContent="";
+ if(!Number.isSafeInteger(cost)||cost<=0){
+  error.textContent="Enter a valid upgrade cost.";return;
+ }
+ if(cost>balance()){
+  error.textContent="Your balance is too low.";return;
+ }
+ if(next!==""&&(!Number.isSafeInteger(Number(next))||Number(next)<0)){
+  error.textContent="Enter a valid next target.";return;
+ }
+ if(!confirm("Record a withdrawal of "+fmt(cost)+" parts for this upgrade?"))return;
+ data.transactions.unshift({
+  id:crypto.randomUUID(),
+  date:utcDate(),
+  type:"withdraw",
+  amount:cost,
+  source:"",
+  note:"Upgrade: "+(note||"Drone upgrade"),
+  time:new Date().toISOString()
+ });
+ if(next!=="")data.target=Number(next);
+ document.getElementById("upgradeCost").value="";
+ document.getElementById("nextGoal").value="";
+ document.getElementById("upgradeNote").value="";
+ persist();
+}
+
+function editTransaction(id){
+ const t=data.transactions.find(x=>x.id===id);
+ if(!t)return;
+ const amount=prompt("New amount:",String(t.amount));
+ if(amount===null)return;
+ const n=Number(amount);
+ if(!Number.isSafeInteger(n)||n<=0){
+  alert("Enter a positive whole number.");return;
+ }
+ const oldAmount=t.amount;
+ t.amount=n;
+ if(balance()<0){
+  t.amount=oldAmount;
+  alert("This change would make your balance negative.");return;
+ }
+ const note=prompt("Description:",t.note);
+ if(note===null){t.amount=oldAmount;return;}
+ t.note=note.trim()||t.note;
+ if(t.type==="deposit"){
+  const source=prompt("Deposit source:",t.source||"");
+  if(source===null){t.amount=oldAmount;return;}
+  t.source=source.trim();
+  if(t.source&&!data.sources.includes(t.source))data.sources.push(t.source);
+ }
+ persist();
+}
+
+function deleteTransaction(id){
+ if(!confirm("Delete this transaction? The balance will be recalculated."))return;
+ data.transactions=data.transactions.filter(t=>t.id!==id);
+ persist();
+}
+
+function periodDates(){
+ const today=utcDate();
+ if(period==="day")return {
+  start:today,end:today,label:"Today (GMT)"
+ };
+ if(period==="week"){
+  const d=new Date(today+"T00:00:00Z");
+  d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));
+  const start=utcDate(d);
+  d.setUTCDate(d.getUTCDate()+6);
+  return {start,end:utcDate(d),label:"This week (Monday–Sunday, GMT)"};
+ }
+ return {
+  start:today.slice(0,7)+"-01",
+  end:today,
+  label:"This month (GMT)"
+ };
+}
+
+function renderAnalytics(){
+ const range=periodDates();
+ const tx=data.transactions.filter(t=>
+  t.date>=range.start&&t.date<=range.end
+ );
+ const ins=deposits(tx);
+ const outs=withdrawals(tx);
+ const net=ins-outs;
+ const days=period==="day"?1:period==="week"?7:
+  new Date(Date.UTC(
+   Number(range.start.slice(0,4)),
+   Number(range.start.slice(5,7)),0
+  )).getUTCDate();
+
+ document.getElementById("periodIn").textContent=fmt(ins);
+ document.getElementById("periodOut").textContent=fmt(outs);
+ document.getElementById("periodNet").textContent=(net>=0?"+":"")+fmt(net);
+ document.getElementById("periodNet").style.color=
+  net>=0?"#75e0a4":"#ff9999";
+ document.getElementById("average").textContent=fmt(ins/days);
+ document.getElementById("periodLabel").textContent=range.label;
+
+ const byDay={};
+ tx.filter(t=>t.type==="deposit").forEach(t=>{
+  byDay[t.date]=(byDay[t.date]||0)+t.amount;
+ });
+ const best=Object.entries(byDay).sort((a,b)=>b[1]-a[1])[0];
+ document.getElementById("bestDay").textContent=
+  best?best[0]+" · "+fmt(best[1]):"No deposits yet";
+
+ const dates=[];
+ if(period==="day"){
+  dates.push(utcDate());
+ }else{
+  const d=new Date(range.start+"T00:00:00Z");
+  while(utcDate(d)<=range.end){
+   dates.push(utcDate(d));
+   d.setUTCDate(d.getUTCDate()+1);
+  }
+ }
+ const chart=document.getElementById("earningsChart");
+ chart.innerHTML="";
+ const values=dates.map(d=>byDay[d]||0);
+ const max=Math.max(1,...values);
+ dates.forEach((date,i)=>{
+  if(period==="month"&&values[i]===0&&i%3!==0)return;
+  const wrap=document.createElement("div");
+  wrap.style.cssText="display:flex;align-items:center;gap:8px;margin:7px 0";
+  const label=document.createElement("span");
+  label.className="small";
+  label.style.width="65px";
+  label.textContent=date.slice(5);
+  const track=document.createElement("div");
+  track.className="sourcebar";
+  track.style.flex="1";
+  const fill=document.createElement("div");
+  fill.className="sourcefill";
+  fill.style.width=(values[i]/max*100)+"%";
+  track.append(fill);
+  const value=document.createElement("span");
+  value.className="small";
+  value.style.width="65px";
+  value.style.textAlign="right";
+  value.textContent=fmt(values[i]);
+  wrap.append(label,track,value);
+  chart.append(wrap);
+ });
+ if(!tx.length)chart.innerHTML="<p>No transactions in this period yet.</p>";
+}
+
+function renderSources(){
+ const tx=data.transactions.filter(t=>t.type==="deposit");
+ const total=deposits(tx);
+ const grouped={};
+ tx.forEach(t=>{
+  const name=t.source||"Unassigned";
+  grouped[name]=(grouped[name]||0)+t.amount;
+ });
+ const breakdown=document.getElementById("sourceBreakdown");
+ breakdown.innerHTML="";
+ const entries=Object.entries(grouped).sort((a,b)=>b[1]-a[1]);
+ if(!entries.length)breakdown.innerHTML="<p>No deposits recorded yet.</p>";
+ entries.forEach(([name,value])=>{
+  const wrap=document.createElement("div");
+  wrap.style.margin="13px 0";
+  const row=document.createElement("div");
+  row.className="row";
+  const title=document.createElement("span");
+  title.textContent=name;
+  const amount=document.createElement("b");
+  amount.textContent=fmt(value)+" · "+Math.round(value/total*100)+"%";
+  row.append(title,amount);
+  const track=document.createElement("div");
+  track.className="sourcebar";
+  track.style.marginTop="6px";
+  const fill=document.createElement("div");
+  fill.className="sourcefill";
+  fill.style.width=(value/total*100)+"%";
+  track.append(fill);
+  wrap.append(row,track);
+  breakdown.append(wrap);
+ });
+
+ const management=document.getElementById("sourceManagement");
+ management.innerHTML="";
+ if(!data.sources.length)management.innerHTML="<p>No active sources. Add one above.</p>";
+ data.sources.forEach(s=>{
+  const row=document.createElement("div");
+  row.className="row";
+  row.style.margin="7px 0";
+  const name=document.createElement("span");
+  name.textContent=s;
+  const actions=document.createElement("span");
+  const edit=document.createElement("button");
+  edit.className="secondary smallbtn";
+  edit.textContent="Rename";
+  edit.onclick=()=>renameSource(s);
+  const archive=document.createElement("button");
+  archive.className="danger smallbtn";
+  archive.textContent="Archive";
+  archive.onclick=()=>archiveSource(s);
+  actions.append(edit,archive);
+  row.append(name,actions);
+  management.append(row);
+ });
+
+ const select=document.getElementById("sourceSelect");
+ const previous=select.value;
+ select.innerHTML="";
+ const blank=document.createElement("option");
+ blank.value="";
+ blank.textContent="Select a source";
+ select.append(blank);
+ data.sources.forEach(s=>{
+  const option=document.createElement("option");
+  option.value=s;
+  option.textContent=s;
+  select.append(option);
+ });
+ if(data.sources.includes(previous))select.value=previous;
+}
 </script>
 </body>
 </html>
