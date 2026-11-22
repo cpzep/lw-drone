@@ -243,6 +243,17 @@ function setMode(m){
  document.getElementById("sourceField").classList.toggle("hidden",m!=="deposit");
 }
 
+
+function setPeriod(p){
+ if(!["day","week","month"].includes(p))return;
+ period=p;
+ const tabs={day:"dayTab",week:"weekTab",month:"monthTab"};
+ Object.entries(tabs).forEach(([key,id])=>{
+  document.getElementById(id).className=key===p?"":"secondary";
+ });
+ renderAnalytics();
+}
+
 function addTransaction(){
  const amount=Number(document.getElementById("amount").value);
  const error=document.getElementById("transactionError");
@@ -429,270 +440,11 @@ function renderAnalytics(){
  const ins=deposits(tx);
  const outs=withdrawals(tx);
  const net=ins-outs;
- const days=period==="day"?1:period==="week"?7:
-  new Date(Date.UTC(
-   Number(range.start.slice(0,4)),
-   Number(range.start.slice(5,7)),0
-  )).getUTCDate();
-
- document.getElementById("periodIn").textContent=fmt(ins);
- document.getElementById("periodOut").textContent=fmt(outs);
- document.getElementById("periodNet").textContent=(net>=0?"+":"")+fmt(net);
- document.getElementById("periodNet").style.color=
-  net>=0?"#75e0a4":"#ff9999";
- document.getElementById("average").textContent=fmt(ins/days);
- document.getElementById("periodLabel").textContent=range.label;
-
- const byDay={};
- tx.filter(t=>t.type==="deposit").forEach(t=>{
-  byDay[t.date]=(byDay[t.date]||0)+t.amount;
- });
- const best=Object.entries(byDay).sort((a,b)=>b[1]-a[1])[0];
- document.getElementById("bestDay").textContent=
-  best?best[0]+" · "+fmt(best[1]):"No deposits yet";
-
- const dates=[];
- if(period==="day"){
-  dates.push(utcDate());
- }else{
-  const d=new Date(range.start+"T00:00:00Z");
-  while(utcDate(d)<=range.end){
-   dates.push(utcDate(d));
-   d.setUTCDate(d.getUTCDate()+1);
-  }
- }
- const chart=document.getElementById("earningsChart");
- chart.innerHTML="";
- const values=dates.map(d=>byDay[d]||0);
- const max=Math.max(1,...values);
- dates.forEach((date,i)=>{
-  if(period==="month"&&values[i]===0&&i%3!==0)return;
-  const wrap=document.createElement("div");
-  wrap.style.cssText="display:flex;align-items:center;gap:8px;margin:7px 0";
-  const label=document.createElement("span");
-  label.className="small";
-  label.style.width="65px";
-  label.textContent=date.slice(5);
-  const track=document.createElement("div");
-  track.className="sourcebar";
-  track.style.flex="1";
-  const fill=document.createElement("div");
-  fill.className="sourcefill";
-  fill.style.width=(values[i]/max*100)+"%";
-  track.append(fill);
-  const value=document.createElement("span");
-  value.className="small";
-  value.style.width="65px";
-  value.style.textAlign="right";
-  value.textContent=fmt(values[i]);
-  wrap.append(label,track,value);
-  chart.append(wrap);
- });
- if(!tx.length)chart.innerHTML="<p>No transactions in this period yet.</p>";
-}
-
-function renderSources(){
- const tx=data.transactions.filter(t=>t.type==="deposit");
- const total=deposits(tx);
- const grouped={};
- tx.forEach(t=>{
-  const name=t.source||"Unassigned";
-  grouped[name]=(grouped[name]||0)+t.amount;
- });
- const breakdown=document.getElementById("sourceBreakdown");
- breakdown.innerHTML="";
- const entries=Object.entries(grouped).sort((a,b)=>b[1]-a[1]);
- if(!entries.length)breakdown.innerHTML="<p>No deposits recorded yet.</p>";
- entries.forEach(([name,value])=>{
-  const wrap=document.createElement("div");
-  wrap.style.margin="13px 0";
-  const row=document.createElement("div");
-  row.className="row";
-  const title=document.createElement("span");
-  title.textContent=name;
-  const amount=document.createElement("b");
-  amount.textContent=fmt(value)+" · "+Math.round(value/total*100)+"%";
-  row.append(title,amount);
-  const track=document.createElement("div");
-  track.className="sourcebar";
-  track.style.marginTop="6px";
-  const fill=document.createElement("div");
-  fill.className="sourcefill";
-  fill.style.width=(value/total*100)+"%";
-  track.append(fill);
-  wrap.append(row,track);
-  breakdown.append(wrap);
- });
-
- const management=document.getElementById("sourceManagement");
- management.innerHTML="";
- if(!data.sources.length)management.innerHTML="<p>No active sources. Add one above.</p>";
- data.sources.forEach(s=>{
-  const row=document.createElement("div");
-  row.className="row";
-  row.style.margin="7px 0";
-  const name=document.createElement("span");
-  name.textContent=s;
-  const actions=document.createElement("span");
-  const edit=document.createElement("button");
-  edit.className="secondary smallbtn";
-  edit.textContent="Rename";
-  edit.onclick=()=>renameSource(s);
-  const archive=document.createElement("button");
-  archive.className="danger smallbtn";
-  archive.textContent="Archive";
-  archive.onclick=()=>archiveSource(s);
-  actions.append(edit,archive);
-  row.append(name,actions);
-  management.append(row);
- });
-
- const select=document.getElementById("sourceSelect");
- const previous=select.value;
- select.innerHTML="";
- const blank=document.createElement("option");
- blank.value="";
- blank.textContent="Select a source";
- select.append(blank);
- data.sources.forEach(s=>{
-  const option=document.createElement("option");
-  option.value=s;
-  option.textContent=s;
-  select.append(option);
- });
- if(data.sources.includes(previous))select.value=previous;
-}
-
-function addSource(){
- const input=document.getElementById("newSource");
- const name=input.value.trim();
- if(!name){alert("Enter a source name.");return;}
- if(data.sources.some(s=>s.toLowerCase()===name.toLowerCase())){
-  alert("That source already exists.");return;
- }
- data.sources.push(name);
- input.value="";
- persist();
-}
-
-function renameSource(oldName){
- const name=prompt("New name for "+oldName,oldName);
- if(name===null)return;
- const clean=name.trim();
- if(!clean){alert("Source name cannot be empty.");return;}
- if(data.sources.some(s=>s.toLowerCase()===clean.toLowerCase()&&s!==oldName)){
-  alert("That source already exists.");return;
- }
- data.sources=data.sources.map(s=>s===oldName?clean:s);
- data.transactions.forEach(t=>{
-  if(t.source===oldName)t.source=clean;
- });
- persist();
-}
-
-function archiveSource(name){
- if(!confirm("Archive "+name+"? Old transactions will be kept."))return;
- data.sources=data.sources.filter(s=>s!==name);
- persist();
-}
-
-function completeUpgrade(){
- const cost=Number(document.getElementById("upgradeCost").value);
- const next=document.getElementById("nextGoal").value;
- const note=document.getElementById("upgradeNote").value.trim();
- const error=document.getElementById("upgradeError");
- error.textContent="";
- if(!Number.isSafeInteger(cost)||cost<=0){
-  error.textContent="Enter a valid upgrade cost.";return;
- }
- if(cost>balance()){
-  error.textContent="Your balance is too low.";return;
- }
- if(next!==""&&(!Number.isSafeInteger(Number(next))||Number(next)<0)){
-  error.textContent="Enter a valid next target.";return;
- }
- if(!confirm("Record a withdrawal of "+fmt(cost)+" parts for this upgrade?"))return;
- data.transactions.unshift({
-  id:crypto.randomUUID(),
-  date:utcDate(),
-  type:"withdraw",
-  amount:cost,
-  source:"",
-  note:"Upgrade: "+(note||"Drone upgrade"),
-  time:new Date().toISOString()
- });
- if(next!=="")data.target=Number(next);
- document.getElementById("upgradeCost").value="";
- document.getElementById("nextGoal").value="";
- document.getElementById("upgradeNote").value="";
- persist();
-}
-
-function editTransaction(id){
- const t=data.transactions.find(x=>x.id===id);
- if(!t)return;
- const amount=prompt("New amount:",String(t.amount));
- if(amount===null)return;
- const n=Number(amount);
- if(!Number.isSafeInteger(n)||n<=0){
-  alert("Enter a positive whole number.");return;
- }
- const oldAmount=t.amount;
- t.amount=n;
- if(balance()<0){
-  t.amount=oldAmount;
-  alert("This change would make your balance negative.");return;
- }
- const note=prompt("Description:",t.note);
- if(note===null){t.amount=oldAmount;return;}
- t.note=note.trim()||t.note;
- if(t.type==="deposit"){
-  const source=prompt("Deposit source:",t.source||"");
-  if(source===null){t.amount=oldAmount;return;}
-  t.source=source.trim();
-  if(t.source&&!data.sources.includes(t.source))data.sources.push(t.source);
- }
- persist();
-}
-
-function deleteTransaction(id){
- if(!confirm("Delete this transaction? The balance will be recalculated."))return;
- data.transactions=data.transactions.filter(t=>t.id!==id);
- persist();
-}
-
-function periodDates(){
- const today=utcDate();
- if(period==="day")return {
-  start:today,end:today,label:"Today (GMT)"
- };
- if(period==="week"){
-  const d=new Date(today+"T00:00:00Z");
-  d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));
-  const start=utcDate(d);
-  d.setUTCDate(d.getUTCDate()+6);
-  return {start,end:utcDate(d),label:"This week (Monday–Sunday, GMT)"};
- }
- return {
-  start:today.slice(0,7)+"-01",
-  end:today,
-  label:"This month (GMT)"
- };
-}
-
-function renderAnalytics(){
- const range=periodDates();
- const tx=data.transactions.filter(t=>
-  t.date>=range.start&&t.date<=range.end
- );
- const ins=deposits(tx);
- const outs=withdrawals(tx);
- const net=ins-outs;
- const days=period==="day"?1:period==="week"?7:
-  new Date(Date.UTC(
-   Number(range.start.slice(0,4)),
-   Number(range.start.slice(5,7)),0
-  )).getUTCDate();
+ // The current week/month is incomplete: average over elapsed calendar days,
+ // including zero-deposit days, rather than future days.
+ const todayDate=new Date(utcDate()+"T00:00:00Z");
+ const startDate=new Date(range.start+"T00:00:00Z");
+ const days=Math.max(1,Math.floor((todayDate-startDate)/86400000)+1);
 
  document.getElementById("periodIn").textContent=fmt(ins);
  document.getElementById("periodOut").textContent=fmt(outs);
