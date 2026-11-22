@@ -44,6 +44,25 @@ footer{text-align:center;color:#8294a5;font-size:11px;padding:15px}
 </head>
 <body>
 <main>
+<section class="card" id="cloudLogin">
+ <h2>🔐 Private Drone Bank</h2>
+ <p>Sign in using your Drone Bank Firebase email and password.</p>
+ <label>Email</label><input id="cloudEmail" type="email" autocomplete="username">
+ <label>Password</label><input id="cloudPassword" type="password" autocomplete="current-password">
+ <button id="cloudSignIn">Sign in</button>
+ <p id="cloudLoginMessage" role="status"></p>
+</section>
+<section class="card hidden" id="cloudAccount">
+ <div class="row"><div><strong>☁️ Cloud account</strong><div class="small" id="cloudUser"></div></div><button class="secondary smallbtn" id="cloudSignOut" style="width:auto">Sign out</button></div>
+ <p id="cloudState" role="status">Connecting…</p>
+ <div id="cloudImport" class="hidden">
+  <strong>No cloud data yet</strong>
+  <p>Import your latest Drone Bank JSON backup to initialize your private cloud account. Nothing will be uploaded until you choose the file and confirm.</p>
+  <input type="file" id="cloudImportFile" accept=".json,application/json">
+  <button id="cloudImportButton">Import backup into cloud</button>
+ </div>
+</section>
+<div id="bankContent" class="hidden">
 <header>
  <div class="small">LAST WAR · PERSONAL TRACKER</div>
  <h1>🚁 Drone Bank 2.2</h1>
@@ -175,14 +194,15 @@ footer{text-align:center;color:#8294a5;font-size:11px;padding:15px}
  <button onclick="backup()">Download backup</button>
  <label>Restore a backup file</label>
  <input type="file" id="restoreFile" accept=".json,application/json">
- <button class="secondary" onclick="restore()">Restore backup</button>
+ <button class="secondary" onclick="restore()">Restore backup to cloud</button>
  <p>Keep backups somewhere safe. Restoring replaces your current account data.</p>
 </section>
 
 <footer>
 Drone Bank 2.2 · All dates use GMT / UTC<br>
-Stored locally in this browser
+Private Firebase synchronisation
 </footer>
+</div>
 </main>
  
 <script>
@@ -223,8 +243,13 @@ function load(){
 let data=load();
 
 function persist(){
+ if (!window.cloudCanEdit) {
+  alert("Cloud data is not ready. Sign in and wait for synchronisation.");
+  return;
+ }
  localStorage.setItem(KEY,JSON.stringify(data));
  render();
+ window.saveDroneCloud(data);
 }
 
 function fmt(n){
@@ -752,6 +777,91 @@ function restore(){
 
 setMode("deposit");
 render();
+</script>
+
+<script type="module">
+import {initializeApp} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js';
+import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-auth.js';
+import {getFirestore,doc,getDoc,setDoc,onSnapshot,serverTimestamp} from 'https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js';
+const firebaseConfig = {
+ apiKey:'AIzaSyBjhPI5L6-K_Hb2-OAXOMCbj2QWiz_Ph0w',
+ authDomain:'drone-bank.firebaseapp.com',
+ projectId:'drone-bank',
+ storageBucket:'drone-bank.firebasestorage.app',
+ messagingSenderId:'128484727551',
+ appId:'1:128484727551:web:1e8d9f831d623f19604aca'
+};
+const ownerUid='4ofVffaKK6MciqfGhm0znNoGXfI3';
+const app=initializeApp(firebaseConfig), auth=getAuth(app), db=getFirestore(app);
+const $=id=>document.getElementById(id);
+let unsub=null,ref=null,ready=false,writeQueue=Promise.resolve(),busy=0;
+window.cloudCanEdit=false;
+const status=msg=>{$('cloudState').textContent=msg;};
+function validData(d){return d && Number.isSafeInteger(d.opening)&&d.opening>=0 && Number.isSafeInteger(d.target)&&d.target>=0 && Array.isArray(d.transactions)&&Array.isArray(d.sources)&&d.transactions.every(t=>Number.isSafeInteger(t.amount)&&t.amount>0&&(t.type==='deposit'||t.type==='withdraw'));}
+function watch(){
+ if(unsub)unsub();
+ unsub=onSnapshot(ref,snap=>{
+  if(!snap.exists()||snap.metadata.hasPendingWrites||busy>0)return;
+  applyCloud(snap.data().payload);
+ },e=>status('Connection error: '+e.message));
+}
+function applyCloud(d){
+ if(!validData(d)){status('Cloud data has an unexpected format. No records changed.');window.cloudCanEdit=false;return;}
+ data=structuredClone(d);
+ localStorage.setItem(KEY,JSON.stringify(data));
+ render();
+ ready=true;window.cloudCanEdit=true;
+ $('bankContent').classList.remove('hidden');
+ $('cloudImport').classList.add('hidden');
+ status('Synced with Firebase');
+}
+window.saveDroneCloud=(snapshot)=>{
+ if(!ready||!ref){status('Not connected. Changes were NOT uploaded.');return;}
+ const payload=structuredClone(snapshot);
+ busy++;
+ status('Saving to Firebase…');
+ writeQueue=writeQueue.catch(()=>{}).then(()=>setDoc(ref,{payload,updatedAt:serverTimestamp()})).then(()=>{
+  busy--;if(busy===0)status('Saved to Firebase');
+ }).catch(e=>{busy--;status('Save failed: '+e.message+' — keep your JSON backup!');});
+};
+$('cloudSignIn').onclick=async()=>{
+ $('cloudLoginMessage').textContent='Signing in…';
+ try{await signInWithEmailAndPassword(auth,$('cloudEmail').value.trim(),$('cloudPassword').value);$('cloudPassword').value='';$('cloudLoginMessage').textContent='';}
+ catch(e){$('cloudLoginMessage').textContent='Sign in failed: '+e.message;}
+};
+$('cloudSignOut').onclick=()=>signOut(auth);
+$('cloudImportButton').onclick=async()=>{
+ if(!ref)return;
+ const f=$('cloudImportFile').files[0];if(!f){status('Select your JSON backup first.');return;}
+ let d;try{d=JSON.parse(await f.text());if(!validData(d))throw new Error('Not a valid Drone Bank backup');}
+ catch(e){status('Import failed: '+e.message);return;}
+ if(!confirm('Import this backup into your PRIVATE cloud account? Existing cloud data will be replaced.'))return;
+ status('Importing…');
+ try{await setDoc(ref,{payload:d,updatedAt:serverTimestamp()});applyCloud(d);watch();status('Backup imported and saved to Firebase');}
+ catch(e){status('Import failed: '+e.message);}
+};
+onAuthStateChanged(auth,async user=>{
+ if(unsub){unsub();unsub=null;}
+ ref=null;ready=false;window.cloudCanEdit=false;busy=0;
+ $('bankContent').classList.add('hidden');$('cloudImport').classList.add('hidden');
+ $('cloudLogin').classList.toggle('hidden',!!user);
+ $('cloudAccount').classList.toggle('hidden',!user);
+ if(!user)return;
+ if(user.uid!==ownerUid){
+  await signOut(auth);$('cloudLoginMessage').textContent='This account has no access to Drone Bank.';return;
+ }
+ $('cloudUser').textContent=user.email;
+ $('cloudPassword').value='';
+ ref=doc(db,'droneBank','account');status('Loading private data…');
+ try{
+  const initial=await getDoc(ref);
+  if(!initial.exists()){
+   status('Cloud account empty. Import your backup below.');$('cloudImport').classList.remove('hidden');return;
+  }
+  applyCloud(initial.data().payload);
+  watch();
+ }catch(e){status('Cannot load cloud data: '+e.message);}
+});
 </script>
 </body>
 </html>
